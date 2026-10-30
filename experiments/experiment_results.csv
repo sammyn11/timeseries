@@ -1,0 +1,3 @@
+experiment,model,scaling,features,hyperparams,MAE,RMSE,R2
+1,LinearRegression,None,raw + lags + MA,default,33.24,41.73,0.9518
+2,LinearRegression + StandardScaler,StandardScaler,raw + lags + MA,fit_intercept=True,33.24,41.73,0.9518
