@@ -37,4 +37,4 @@ db.energy_readings.createIndex({ "location.location_id": 1, "timestamp": 1 });
 - **Embedded model:** weather and energy are embedded in the same document so a
   single read returns everything needed for a prediction (no joins).
 - **Timestamp indexed:** supports fast "latest record" and "date range" queries.
-- **Flexible schema:** easy to add new sensor fields later without migrations.
+- **Flexible schema:** easy to add new sensor fields in the future without migrations.

@@ -1,4 +1,4 @@
-# Energy Demand Forecasting — Time Series Formative 1
+#  Energy Demand Forecasting — Time Series Formative 1
 
 Group project: end-to-end time-series pipeline covering EDA, preprocessing,
 SQL & MongoDB databases, CRUD API endpoints, and a prediction script.
