@@ -16,12 +16,16 @@ os.makedirs("outputs/charts", exist_ok=True)
 # Load & clean
 # ------------------------------------------------------------
 df = load_data()
+missing_before = df[["temperature_c", "humidity", "wind_speed_kmh", "energy_demand_mwh"]].isna().sum()
 df_clean = handle_missing(df, method="ffill")
 df_clean = preprocess(df_clean, add_features=True)
 
 print("=== DATASET OVERVIEW ===")
 print("Time range:", df_clean["timestamp"].min(), "to", df_clean["timestamp"].max())
 print("Frequency: Hourly (" + str(len(df_clean)) + " records)")
+print("Missing values before handling:\n", missing_before.to_string())
+print("Weather gaps are forward-filled from the previous hour (then back-filled "
+      "for leading gaps); rows without a target or required lag history are excluded.")
 print("\nStatistical summary:\n")
 print(df_clean[["temperature_c", "humidity", "wind_speed_kmh", "energy_demand_mwh"]].describe())
 
@@ -45,8 +49,9 @@ plt.close()
 print("\nQ1 - TREND:")
 print("Demand starts around", round(monthly.iloc[0], 1), "MWh and ends around",
       round(monthly.iloc[-1], 1), "MWh.")
-print("Interpretation: There is a slight upward trend over the 4 years "
-      "(growing consumption), so the model should account for time/trend.")
+trend_direction = "upward" if monthly.iloc[-1] > monthly.iloc[0] else "downward"
+print("Interpretation: Average demand shows an overall", trend_direction,
+      "trend, so the model should account for time and trend.")
 
 # ------------------------------------------------------------
 # Q2: Seasonality - Does demand peak in summer or winter?
@@ -92,8 +97,9 @@ plt.close()
 corr = df_clean["temperature_c"].corr(df_clean["energy_demand_mwh"])
 print("\nQ3 - CORRELATION:")
 print("Correlation between temperature and demand:", round(corr, 3))
-print("Interpretation: Correlation is", round(corr, 3), "- indicates a relationship "
-      "(likely U-shaped: both very cold and very hot raise demand).")
+print("Interpretation: The linear correlation is", round(corr, 3),
+      "indicating a modest positive association in this sample; this does not "
+      "establish causation or rule out nonlinear effects.")
 
 # ------------------------------------------------------------
 # Q4: Lagged feature - Is today's demand related to demand 7 days ago? (LAG)
@@ -118,26 +124,32 @@ print("Interpretation: Strong correlation of", round(lag_corr, 3),
 # ------------------------------------------------------------
 # Q5: Moving average - Does 24-hour moving average smooth demand? (MA)
 # ------------------------------------------------------------
-sample = df_clean.set_index("timestamp").loc["2023-06-01":"2023-06-14"]
+sample = df_clean.set_index("timestamp").tail(24 * 14)
+sample_start = sample.index.min().strftime("%Y-%m-%d")
+sample_end = sample.index.max().strftime("%Y-%m-%d")
 
 plt.figure(figsize=(11, 4))
 plt.plot(sample.index, sample["energy_demand_mwh"], label="Actual Demand", linewidth=1)
 plt.plot(sample.index, sample["demand_ma_24h"], label="24-hr Moving Average",
          linewidth=2, color="orange")
-plt.title("Q5: 24-Hour Moving Average Smooths Demand (June 2023)")
+plt.title(f"Q5: 24-Hour Moving Average ({sample_start} to {sample_end})")
 plt.xlabel("Date")
 plt.ylabel("Demand (MWh)")
 plt.legend()
 plt.grid(True, alpha=0.3)
+plt.gcf().autofmt_xdate()
 plt.tight_layout()
 plt.savefig("outputs/charts/q5_moving_average.png", dpi=150)
 plt.close()
 
 print("\nQ5 - MOVING AVERAGE:")
-print("The 24-hour moving average smooths out daily spikes and reveals the "
-      "underlying demand level.")
-print("Interpretation: Moving average is useful for forecasting because it "
-      "filters short-term noise.")
+actual_change = sample["energy_demand_mwh"].diff().std()
+average_change = sample["demand_ma_24h"].diff().std()
+print("Standard deviation of hourly changes: actual =", round(actual_change, 2),
+      "MWh; moving average =", round(average_change, 2), "MWh.")
+print("Interpretation: The rolling average", "reduces" if average_change < actual_change else "does not reduce",
+      "hour-to-hour variability in this sample, showing how much short-term "
+      "demand movement it smooths.")
 
 print("\n=== All 5 charts saved to outputs/charts/ ===")
 print("Q1 trend.png  Q2 seasonality.png  Q3 correlation.png  Q4 lag.png  Q5 moving_average.png")

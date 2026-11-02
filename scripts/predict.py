@@ -49,10 +49,27 @@ def preprocess_record(record, history_df):
     We need recent history to compute lags and moving averages.
     """
     df = history_df.copy()
-    # Append the new record so lags/MA can be computed
-    new_row = pd.DataFrame([record])
-    new_row["timestamp"] = pd.to_datetime(new_row["timestamp"])
-    df = pd.concat([df, new_row], ignore_index=True)
+    df["timestamp"] = (
+        pd.to_datetime(df["timestamp"], utc=True)
+        .dt.tz_convert("Europe/Madrid")
+        .dt.tz_localize(None)
+    )
+    record_timestamp = (
+        pd.to_datetime(record["timestamp"], utc=True)
+        .tz_convert("Europe/Madrid")
+        .tz_localize(None)
+    )
+    demand = record.get("energy_demand_mwh", record.get("demand_mwh"))
+    new_row = pd.DataFrame([{
+        "timestamp": record_timestamp,
+        "temperature_c": record["temperature_c"],
+        "humidity": record["humidity"],
+        "wind_speed_kmh": record["wind_speed_kmh"],
+        "energy_demand_mwh": demand,
+        "is_weekend": record.get("is_weekend", 0),
+    }])
+    df = df.loc[df["timestamp"] != record_timestamp]
+    df = pd.concat([df, new_row], ignore_index=True).sort_values("timestamp").reset_index(drop=True)
 
     df = handle_missing(df, method="ffill")
     df = add_time_features(df)
@@ -60,8 +77,7 @@ def preprocess_record(record, history_df):
     df = add_moving_average(df, windows=[7, 24])
 
     # The last row is our record to predict
-    row = df.iloc[[-1]].copy()
-    return row
+    return df.loc[df["timestamp"] == record_timestamp].iloc[[-1]].copy()
 
 
 def predict(record, history_df):

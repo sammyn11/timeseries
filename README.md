@@ -1,11 +1,11 @@
-#  Energy Demand Forecasting — Time Series Formative 1
+# Energy Demand Forecasting — Time Series Formative 1
 
-Group project: end-to-end time-series pipeline covering EDA, preprocessing,
+Group project: creating an end-to-end time-series pipeline covering EDA, preprocessing,
 SQL & MongoDB databases, CRUD API endpoints, and a prediction script.
 
 ## Dataset
-**Energy demand + weather (4 years of hourly data)**
-`data/energy_weather_4years.csv` — timestamp, temperature, humidity, wind speed,
+**https://www.kaggle.com/datasets/nicholasjhana/energy-consumption-generation-prices-and-weather**
+`api/data/energy_dataset.csv` and `api/data/weather_features.csv` — timestamp, temperature, humidity, wind speed,
 energy demand (MWh), is_weekend.
 
 Chosen because it has a clear timestamp, a meaningful prediction target
@@ -15,9 +15,6 @@ the assignment requires.
 ## Repository Structure
 ```
 TimeSeries_Project/
-├── data/                         # Raw dataset + generator
-│   ├── energy_weather_4years.csv
-│   └── generate_dataset.py
 ├── scripts/                      # Python scripts
 │   ├── preprocess.py             # Cleaning + lag + moving-average features
 │   ├── eda_task1.py              # Task 1: 5 analytical questions + charts
@@ -25,7 +22,12 @@ TimeSeries_Project/
 │   └── predict.py                # Task 4: end-to-end prediction script
 ├── api/                          # Task 3: CRUD APIs
 │   ├── app_sql.py                # SQL API (port 5000)
-│   └── app_mongo.py              # MongoDB API (port 5001)
+│   ├── app_mongo.py              # MongoDB API (port 5001)
+│   ├── seed_data.py              # Shared real-data loading for API seeding
+│   ├── test_crud.py              # CRUD endpoint checks
+│   └── data/                     # Original Kaggle dataset files
+│       ├── energy_dataset.csv
+│       └── weather_features.csv
 ├── database/                     # Task 2: Database design
 │   ├── schema.sql                # SQL schema (3 tables)
 │   └── mongo_design.md           # MongoDB collection design
@@ -39,32 +41,29 @@ TimeSeries_Project/
 
 ### 1. Install requirements
 ```bash
-pip install flask flask-cors pandas scikit-learn joblib matplotlib pymongo
+pip install flask flask-cors pandas scikit-learn joblib matplotlib pymongo mysql-connector-python python-dotenv
 ```
 
-### 2. Generate / inspect the dataset
-```bash
-python data/generate_dataset.py
-```
-
-### 3. Task 1 — Exploratory Data Analysis
+### 2. Task 1 — Exploratory Data Analysis
 Produces 5 charts in `outputs/charts/` and prints interpretations.
 ```bash
 python scripts/eda_task1.py
 ```
 
-### 4. Task 2 — Databases
-- SQL: `database/schema.sql` (3 tables: locations, weather, energy_demand)
+### 3. Task 2 — Databases
+- SQL: run `database/schema.sql` in MySQL Workbench or with `mysql -u root -p < database/schema.sql` (3 tables: locations, weather, energy_demand)
 - MongoDB: `database/mongo_design.md` (embedded collection design + sample doc)
 
-### 5. Train the model (+ experiment table)
+### 4. Train the model (+ experiment table)
 ```bash
 python scripts/train_model.py
 ```
 Saves `models/energy_demand_model.pkl` and
 `experiments/experiment_results.csv`.
 
-### 6. Task 3 — Run the APIs (separate terminals)
+### 5. Task 3 — Run the APIs (separate terminals)
+Add your MySQL connection settings to the project-root `.env` file using
+`.env.example` as a guide. Run the SQL schema once before starting the API.
 ```bash
 # SQL API on port 5000
 python api/app_sql.py
@@ -72,6 +71,8 @@ python api/app_sql.py
 # MongoDB API on port 5001 (requires MongoDB running)
 python api/app_mongo.py
 ```
+The MongoDB API reads `MONGO_URI` from the project-root `.env` file. If it is
+not set, it connects to `mongodb://localhost:27017/`.
 
 Endpoints (both databases):
 - `POST   /api/<db>/records`        — create
@@ -81,7 +82,15 @@ Endpoints (both databases):
 - `PUT    /api/<db>/records/<id>`   — update
 - `DELETE /api/<db>/records/<id>`   — delete
 
-### 7. Task 4 — Prediction script
+### CRUD API Tests
+Start both APIs, then run the test suite from the project root:
+```bash
+python api/test_crud.py
+```
+The suite checks SQL and MongoDB create, read, update, delete, latest-record,
+and date-range behavior. Configure and start both database APIs before running it.
+
+### 6. Task 4 — Prediction script
 ```bash
 python scripts/predict.py
 ```
@@ -91,10 +100,10 @@ a demand forecast.
 ## Team Roles
 | Role | Responsibility | Files |
 |------|---------------|-------|
-| Person A | Data + EDA | `scripts/eda_task1.py`, `outputs/charts/` |
-| Person B | Model + tuning | `scripts/train_model.py`, `models/`, `experiments/` |
-| Person C | Databases | `database/schema.sql`, `database/mongo_design.md` |
-| Person D | API + prediction script | `api/`, `scripts/predict.py` |
+| Task 1| Data + EDA | `scripts/eda_task1.py`, `outputs/charts/` |
+| Task 2 | Model + tuning | `scripts/train_model.py`, `models/`, `experiments/` |
+| Task 3 | Databases | `database/schema.sql`, `database/mongo_design.md` |
+| Task 4 | API + prediction script | `api/`, `scripts/predict.py` |
 
-Each member made 4+ commits with clear messages (e.g. "added missing-value handling",
+Each member made commits with clear messages (e.g. "added missing-value handling",
 "built SQL CRUD endpoints").

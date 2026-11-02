@@ -10,39 +10,75 @@ Endpoints mirror the SQL API:
   DELETE /api/mongo/records/<id>
 """
 import os
+from datetime import datetime, timezone
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from bson import ObjectId
-from pymongo import MongoClient
+from pymongo import MongoClient, UpdateOne
+from dotenv import load_dotenv
+
+if __package__:
+    from .seed_data import load_seed_records
+else:
+    from seed_data import load_seed_records
+
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env"))
+
+
+def normalize_timestamp(value):
+    timestamp = datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    return timestamp.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 app = Flask(__name__)
 CORS(app)
 
+
+@app.route("/")
+def index():
+    return jsonify({
+        "service": "Energy Demand MongoDB API",
+        "records": "/api/mongo/records",
+    })
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return "", 204
+
+
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
-client = MongoClient(MONGO_URI)
+client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
 db = client["energy_db"]
 collection = db["energy_readings"]
 
-# Indexes for time-series queries
+#Indexes for time-series queries
 collection.create_index("timestamp")
 collection.create_index([("location.location_id", 1), ("timestamp", 1)])
 
-# Seed if empty
-CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "energy_weather_4years.csv")
-if collection.count_documents({}) == 0 and os.path.exists(CSV_PATH):
-    import pandas as pd
-    df = pd.read_csv(CSV_PATH).head(500)
-    docs = []
-    for _, r in df.iterrows():
-        docs.append({
-            "location": {"location_id": 1, "city": "Sample City", "country": "Sample Country", "region": "Central"},
-            "timestamp": str(r["timestamp"]),
-            "is_weekend": bool(r["is_weekend"]),
-            "weather": {"temperature_c": float(r["temperature_c"]), "humidity": float(r["humidity"]), "wind_speed_kmh": float(r["wind_speed_kmh"])},
-            "energy": {"demand_mwh": float(r["energy_demand_mwh"])},
-        })
-    collection.insert_many(docs)
-    print("Seeded MongoDB with", len(docs), "documents.")
+seed_records = load_seed_records()
+if seed_records:
+    operations = [
+        UpdateOne(
+            {"timestamp": normalize_timestamp(row["timestamp"]), "location.location_id": 1},
+            {"$setOnInsert": {
+                "location": {"location_id": 1, "city": "Valencia", "country": "Spain", "region": "Valencian Community"},
+                "timestamp": normalize_timestamp(row["timestamp"]),
+                "is_weekend": bool(row["is_weekend"]),
+                "weather": {
+                    "temperature_c": row["temperature_c"],
+                    "humidity": row["humidity"],
+                    "wind_speed_kmh": row["wind_speed_kmh"],
+                },
+                "energy": {"demand_mwh": row["demand_mwh"]},
+            }},
+            upsert=True,
+        )
+        for row in seed_records
+    ]
+    result = collection.bulk_write(operations, ordered=False)
+    print("Ensured MongoDB seed data; added", result.upserted_count, "documents.")
 
 
 def doc_to_json(doc):
@@ -58,7 +94,7 @@ def create_record():
     data = request.get_json(force=True)
     doc = {
         "location": {"location_id": 1, "city": "Sample City", "country": "Sample Country", "region": "Central"},
-        "timestamp": data["timestamp"],
+        "timestamp": normalize_timestamp(data["timestamp"]),
         "is_weekend": bool(data.get("is_weekend", 0)),
         "weather": {"temperature_c": float(data["temperature_c"]), "humidity": float(data["humidity"]), "wind_speed_kmh": float(data["wind_speed_kmh"])},
         "energy": {"demand_mwh": float(data["demand_mwh"])},
@@ -97,6 +133,11 @@ def get_range():
     end = request.args.get("end")
     if not start or not end:
         return jsonify({"error": "provide start and end"}), 400
+    try:
+        start = normalize_timestamp(start)
+        end = normalize_timestamp(end)
+    except ValueError:
+        return jsonify({"error": "timestamps must be ISO 8601"}), 400
     cursor = collection.find({"timestamp": {"$gte": start, "$lte": end}}).sort("timestamp", 1)
     return jsonify([doc_to_json(d) for d in cursor])
 

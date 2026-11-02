@@ -1,15 +1,14 @@
 -- ============================================================================
 -- Relational (SQL) Schema for Energy Demand + Weather Time-Series
--- Database: MySQL (tested with SQLite for portability)
--- Tables: locations, weather, energy_demand  (minimum 3 tables required)
+-- Database: MySQL
+-- Tables: locations, weather, energy_demand
 -- ============================================================================
 
-DROP TABLE IF EXISTS energy_demand;
-DROP TABLE IF EXISTS weather;
-DROP TABLE IF EXISTS locations;
+CREATE DATABASE IF NOT EXISTS energy_db;
+USE energy_db;
 
 -- 1. Locations table (where the data is collected)
-CREATE TABLE locations (
+CREATE TABLE IF NOT EXISTS locations (
     location_id   INT PRIMARY KEY AUTO_INCREMENT,
     city          VARCHAR(100) NOT NULL,
     country       VARCHAR(100) NOT NULL,
@@ -20,7 +19,7 @@ CREATE TABLE locations (
 );
 
 -- 2. Weather table (external variables over time)
-CREATE TABLE weather (
+CREATE TABLE IF NOT EXISTS weather (
     weather_id    INT PRIMARY KEY AUTO_INCREMENT,
     location_id   INT NOT NULL,
     timestamp     DATETIME NOT NULL,
@@ -29,11 +28,12 @@ CREATE TABLE weather (
     wind_speed_kmh DECIMAL(5,2),
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (location_id) REFERENCES locations(location_id),
-    UNIQUE (location_id, timestamp)
+    UNIQUE KEY uq_weather_location_timestamp (location_id, timestamp),
+    KEY idx_weather_ts (timestamp)
 );
 
 -- 3. Energy demand table (the prediction target over time)
-CREATE TABLE energy_demand (
+CREATE TABLE IF NOT EXISTS energy_demand (
     demand_id       INT PRIMARY KEY AUTO_INCREMENT,
     location_id     INT NOT NULL,
     timestamp       DATETIME NOT NULL,
@@ -41,13 +41,13 @@ CREATE TABLE energy_demand (
     is_weekend      TINYINT(1) DEFAULT 0,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (location_id) REFERENCES locations(location_id),
-    UNIQUE (location_id, timestamp)
+    UNIQUE KEY uq_demand_location_timestamp (location_id, timestamp),
+    KEY idx_demand_ts (timestamp)
 );
 
--- Indexes for fast time-series range queries
-CREATE INDEX idx_weather_ts   ON weather(timestamp);
-CREATE INDEX idx_demand_ts    ON energy_demand(timestamp);
-
--- Sample insert (one location)
+--Add the dataset location once; the API uses the same location.
 INSERT INTO locations (city, country, region, latitude, longitude)
-VALUES ('Sample City', 'Sample Country', 'Central', 40.7128, -74.0060);
+SELECT 'Valencia', 'Spain', 'Valencian Community', 39.469900, -0.376300
+WHERE NOT EXISTS (
+    SELECT 1 FROM locations WHERE city = 'Valencia' AND country = 'Spain'
+);

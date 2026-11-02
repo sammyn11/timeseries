@@ -8,9 +8,10 @@ import pandas as pd
 import numpy as np
 import joblib
 from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from preprocess import load_data, preprocess
 
@@ -58,18 +59,25 @@ exp1 = {
 # ------------------------------------------------------------
 pipe = Pipeline([
     ("scaler", StandardScaler()),
-    ("lr", LinearRegression())
+    ("ridge", Ridge())
 ])
-param_grid = {"lr__fit_intercept": [True, False]}
-grid = GridSearchCV(pipe, param_grid, cv=3, scoring="neg_mean_absolute_error")
+param_grid = {"ridge__alpha": [0.01, 0.1, 1.0, 10.0, 100.0]}
+time_series_cv = TimeSeriesSplit(n_splits=3)
+grid = GridSearchCV(
+    pipe,
+    param_grid,
+    cv=time_series_cv,
+    scoring="neg_mean_absolute_error",
+    n_jobs=-1,
+)
 grid.fit(X_train, y_train)
 pred2 = grid.predict(X_test)
 exp2 = {
     "experiment": 2,
-    "model": "LinearRegression + StandardScaler",
+    "model": "Ridge + StandardScaler",
     "scaling": "StandardScaler",
     "features": "raw + lags + MA",
-    "hyperparams": "fit_intercept=" + str(grid.best_params_["lr__fit_intercept"]),
+    "hyperparams": "alpha=" + str(grid.best_params_["ridge__alpha"]),
     "MAE": round(mean_absolute_error(y_test, pred2), 2),
     "RMSE": round(np.sqrt(mean_squared_error(y_test, pred2)), 2),
     "R2": round(r2_score(y_test, pred2), 4),
