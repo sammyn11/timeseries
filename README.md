@@ -65,10 +65,10 @@ Saves `models/energy_demand_model.pkl` and
 Add your MySQL connection settings to the project-root `.env` file using
 `.env.example` as a guide. Run the SQL schema once before starting the API.
 ```bash
-# SQL API on port 5000
+#SQL API on port 5000
 python api/app_sql.py
 
-# MongoDB API on port 5001 (requires MongoDB running)
+#MongoDB API on port 5001 (requires MongoDB running)
 python api/app_mongo.py
 ```
 The MongoDB API reads `MONGO_URI` from the project-root `.env` file. If it is
