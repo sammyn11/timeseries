@@ -15,7 +15,7 @@ import joblib
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from preprocess import load_data, handle_missing, add_time_features, add_lag_features, add_moving_average
 
-API_BASE = "http://127.0.0.1:5000"   # SQL API (switch to 5001 for MongoDB API)
+API_BASE = "http://127.0.0.1:5000"   #SQL API (switch to 5001 for MongoDB API)
 MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "models", "energy_demand_model.pkl")
 MODEL_PATH = os.path.abspath(MODEL_PATH)
 
@@ -49,7 +49,7 @@ def preprocess_record(record, history_df):
     We need recent history to compute lags and moving averages.
     """
     df = history_df.copy()
-    # Append the new record so lags/MA can be computed
+    
     new_row = pd.DataFrame([record])
     new_row["timestamp"] = pd.to_datetime(new_row["timestamp"])
     df = pd.concat([df, new_row], ignore_index=True)
@@ -59,7 +59,7 @@ def preprocess_record(record, history_df):
     df = add_lag_features(df, lags=[1, 24, 168])
     df = add_moving_average(df, windows=[7, 24])
 
-    # The last row is our record to predict
+    
     row = df.iloc[[-1]].copy()
     return row
 

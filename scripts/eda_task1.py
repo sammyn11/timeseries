@@ -12,9 +12,7 @@ from preprocess import load_data, handle_missing, preprocess
 
 os.makedirs("outputs/charts", exist_ok=True)
 
-# ------------------------------------------------------------
-# Load & clean
-# ------------------------------------------------------------
+
 df = load_data()
 df_clean = handle_missing(df, method="ffill")
 df_clean = preprocess(df_clean, add_features=True)
@@ -27,9 +25,7 @@ print(df_clean[["temperature_c", "humidity", "wind_speed_kmh", "energy_demand_mw
 
 plt.style.use("default")
 
-# ------------------------------------------------------------
-# Q1: Trend - Is demand increasing or decreasing over 4 years?
-# ------------------------------------------------------------
+
 monthly = df_clean.set_index("timestamp").resample("ME")["energy_demand_mwh"].mean()
 
 plt.figure(figsize=(10, 4))
@@ -48,9 +44,7 @@ print("Demand starts around", round(monthly.iloc[0], 1), "MWh and ends around",
 print("Interpretation: There is a slight upward trend over the 4 years "
       "(growing consumption), so the model should account for time/trend.")
 
-# ------------------------------------------------------------
-# Q2: Seasonality - Does demand peak in summer or winter?
-# ------------------------------------------------------------
+
 df_clean["month_name"] = df_clean["timestamp"].dt.month_name()
 month_order = ["January", "February", "March", "April", "May", "June", "July",
                "August", "September", "October", "November", "December"]
@@ -75,9 +69,7 @@ print("Lowest demand month:", low_month, "(" + str(round(monthly_season.min(), 1
 print("Interpretation: Demand peaks in", top_month, "and", low_month, "is lowest - "
       "clear seasonal pattern (heating/cooling).")
 
-# ------------------------------------------------------------
-# Q3: Correlation - Does temperature correlate with demand?
-# ------------------------------------------------------------
+
 plt.figure(figsize=(6, 6))
 plt.scatter(df_clean["temperature_c"], df_clean["energy_demand_mwh"],
             alpha=0.3, s=10, color="darkgreen")
@@ -95,9 +87,7 @@ print("Correlation between temperature and demand:", round(corr, 3))
 print("Interpretation: Correlation is", round(corr, 3), "- indicates a relationship "
       "(likely U-shaped: both very cold and very hot raise demand).")
 
-# ------------------------------------------------------------
-# Q4: Lagged feature - Is today's demand related to demand 7 days ago? (LAG)
-# ------------------------------------------------------------
+
 plt.figure(figsize=(6, 6))
 plt.scatter(df_clean["demand_lag_168h"], df_clean["energy_demand_mwh"],
             alpha=0.3, s=10, color="purple")
@@ -115,9 +105,7 @@ print("Correlation between demand and demand 7 days ago:", round(lag_corr, 3))
 print("Interpretation: Strong correlation of", round(lag_corr, 3),
       "- demand repeats weekly, so lagged features are useful predictors.")
 
-# ------------------------------------------------------------
-# Q5: Moving average - Does 24-hour moving average smooth demand? (MA)
-# ------------------------------------------------------------
+
 sample = df_clean.set_index("timestamp").loc["2023-06-01":"2023-06-14"]
 
 plt.figure(figsize=(11, 4))

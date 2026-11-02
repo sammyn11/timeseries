@@ -66,10 +66,10 @@ Saves `models/energy_demand_model.pkl` and
 
 ### 6. Task 3 — Run the APIs (separate terminals)
 ```bash
-# SQL API on port 5000
+#SQL API on port 5000
 python api/app_sql.py
 
-# MongoDB API on port 5001 (requires MongoDB running)
+#MongoDB API on port 5001 (requires MongoDB running)
 python api/app_mongo.py
 ```
 

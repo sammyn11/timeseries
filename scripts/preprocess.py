@@ -28,7 +28,7 @@ def handle_missing(df, method="ffill"):
         df["temperature_c"] = df["temperature_c"].fillna(df["temperature_c"].mean())
         df["humidity"] = df["humidity"].fillna(df["humidity"].mean())
 
-    # Any remaining leading NaNs (if first row is missing) -> backward fill
+    
     df[["temperature_c", "humidity"]] = df[["temperature_c", "humidity"]].bfill()
 
     after = df.isna().sum().sum()
@@ -77,7 +77,7 @@ def preprocess(df, add_features=True):
     if add_features:
         df = add_lag_features(df, lags=[1, 24, 168])
         df = add_moving_average(df, windows=[7, 24])
-    # Drop rows with NaNs created by lag/shift (first 24 rows)
+    
     df = df.dropna().reset_index(drop=True)
     return df
 
