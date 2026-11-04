@@ -2,12 +2,14 @@
 Task 3: CRUD + Time-Series API for MongoDB (Person D role)
 Runs on port 5001. Requires MongoDB running locally (mongodb://localhost:27017).
 Endpoints mirror the SQL API:
+
   POST   /api/mongo/records
   GET    /api/mongo/records
   GET    /api/mongo/records/latest
   GET    /api/mongo/records/range?start=...&end=...
   PUT    /api/mongo/records/<id>
   DELETE /api/mongo/records/<id>
+  
 """
 import os
 from datetime import datetime, timezone
@@ -89,6 +91,7 @@ def doc_to_json(doc):
 # ------------------------------------------------------------
 # CRUD: Create
 # ------------------------------------------------------------
+  
 @app.route("/api/mongo/records", methods=["POST"])
 def create_record():
     data = request.get_json(force=True)
@@ -116,6 +119,7 @@ def get_records():
 # ------------------------------------------------------------
 # Time-series: Latest record
 # ------------------------------------------------------------
+  
 @app.route("/api/mongo/records/latest", methods=["GET"])
 def get_latest():
     doc = collection.find_one(sort=[("timestamp", -1)])
@@ -127,6 +131,7 @@ def get_latest():
 # ------------------------------------------------------------
 # Time-series: Records by date range
 # ------------------------------------------------------------
+
 @app.route("/api/mongo/records/range", methods=["GET"])
 def get_range():
     start = request.args.get("start")
