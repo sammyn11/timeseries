@@ -45,6 +45,7 @@ def test_sql():
         check("SQL GET latest", False, f"unreachable: {e}")
 
     # --- GET all ---
+    
     try:
         r = requests.get(f"{base}/api/sql/records?limit=3", timeout=5)
         data = get_json(r)
